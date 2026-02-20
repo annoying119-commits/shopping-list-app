@@ -246,12 +246,20 @@
     <button class="btn-clear" id="clearBtn" style="display:none" onclick="clearChecked()">완료된 항목 삭제</button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
     const SUPABASE_URL = 'https://gtdksxnxwvnsoyzmszbz.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0ZGtzeG54d3Zuc295em1zemJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MjU4NjUsImV4cCI6MjA4NzEwMTg2NX0.HQXmy-6tEjfGRU8fRKDZKqgTrfVYmasRBBgQW8Abhd8';
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let supabase;
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch (e) {
+      document.getElementById('statusBar').textContent = 'Supabase 초기화 실패: ' + e.message;
+      document.getElementById('statusBar').className = 'status-bar error';
+      document.getElementById('addBtn').disabled = true;
+      document.getElementById('itemInput').disabled = true;
+    }
 
     let items = [];
 
@@ -315,108 +323,108 @@
     }
 
     async function loadItems() {
+      if (!supabase) return;
       setStatus('불러오는 중...');
-      const { data, error } = await supabase
-        .from('shopping_items')
-        .select('*')
-        .order('created_at', { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from('shopping_items')
+          .select('*')
+          .order('created_at', { ascending: true });
 
-      if (error) {
-        setStatus('데이터 로드 실패: ' + error.message, true);
-        return;
+        if (error) { setStatus('데이터 로드 실패: ' + error.message, true); return; }
+        items = data;
+        setStatus('');
+        render();
+      } catch (e) {
+        setStatus('데이터 로드 실패: ' + e.message, true);
       }
-
-      items = data;
-      setStatus('');
-      render();
     }
 
     async function addItem() {
+      if (!supabase) { setStatus('Supabase 연결이 없습니다.', true); return; }
       const input = document.getElementById('itemInput');
       const addBtn = document.getElementById('addBtn');
       const text = input.value.trim();
-      if (!text) {
-        input.focus();
-        return;
-      }
+      if (!text) { input.focus(); return; }
 
       addBtn.disabled = true;
       setStatus('추가 중...');
+      try {
+        const { data, error } = await supabase
+          .from('shopping_items')
+          .insert([{ text, checked: false }])
+          .select()
+          .single();
 
-      const { data, error } = await supabase
-        .from('shopping_items')
-        .insert([{ text, checked: false }])
-        .select()
-        .single();
-
-      addBtn.disabled = false;
-
-      if (error) {
-        setStatus('추가 실패: ' + error.message, true);
-        return;
+        if (error) { setStatus('추가 실패: ' + error.message, true); return; }
+        items.push(data);
+        setStatus('');
+        render();
+        input.value = '';
+        input.focus();
+      } catch (e) {
+        setStatus('추가 실패: ' + e.message, true);
+      } finally {
+        addBtn.disabled = false;
       }
-
-      items.push(data);
-      setStatus('');
-      render();
-      input.value = '';
-      input.focus();
     }
 
     async function toggleItem(id, checked) {
+      if (!supabase) return;
       setStatus('업데이트 중...');
-      const { error } = await supabase
-        .from('shopping_items')
-        .update({ checked })
-        .eq('id', id);
+      try {
+        const { error } = await supabase
+          .from('shopping_items')
+          .update({ checked })
+          .eq('id', id);
 
-      if (error) {
-        setStatus('업데이트 실패: ' + error.message, true);
-        await loadItems();
-        return;
+        if (error) { setStatus('업데이트 실패: ' + error.message, true); await loadItems(); return; }
+        const item = items.find(i => i.id === id);
+        if (item) item.checked = checked;
+        setStatus('');
+        render();
+      } catch (e) {
+        setStatus('업데이트 실패: ' + e.message, true);
       }
-
-      const item = items.find(i => i.id === id);
-      if (item) item.checked = checked;
-      setStatus('');
-      render();
     }
 
     async function deleteItem(id) {
+      if (!supabase) return;
       setStatus('삭제 중...');
-      const { error } = await supabase
-        .from('shopping_items')
-        .delete()
-        .eq('id', id);
+      try {
+        const { error } = await supabase
+          .from('shopping_items')
+          .delete()
+          .eq('id', id);
 
-      if (error) {
-        setStatus('삭제 실패: ' + error.message, true);
-        return;
+        if (error) { setStatus('삭제 실패: ' + error.message, true); return; }
+        items = items.filter(i => i.id !== id);
+        setStatus('');
+        render();
+      } catch (e) {
+        setStatus('삭제 실패: ' + e.message, true);
       }
-
-      items = items.filter(i => i.id !== id);
-      setStatus('');
-      render();
     }
 
     async function clearChecked() {
+      if (!supabase) return;
       const checkedIds = items.filter(i => i.checked).map(i => i.id);
       if (checkedIds.length === 0) return;
 
       setStatus('삭제 중...');
-      const { error } = await supabase
-        .from('shopping_items')
-        .delete()
-        .in('id', checkedIds);
+      try {
+        const { error } = await supabase
+          .from('shopping_items')
+          .delete()
+          .in('id', checkedIds);
 
-      if (error) {
-        setStatus('삭제 실패: ' + error.message, true);
-        return;
+        if (error) { setStatus('삭제 실패: ' + error.message, true); return; }
+        items = items.filter(i => !i.checked);
+        setStatus('');
+        render();
+      } catch (e) {
+        setStatus('삭제 실패: ' + e.message, true);
       }
-
-      items = items.filter(i => !i.checked);
-      setStatus('');
-      render();
     }
 
     document.getElementById('itemInput').addEventListener('keydown', e => {
