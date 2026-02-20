@@ -229,7 +229,7 @@
 
     <div class="input-row">
       <input type="text" id="itemInput" placeholder="아이템을 입력하세요..." maxlength="100">
-      <button class="btn-add" id="addBtn" onclick="addItem()">추가</button>
+      <button class="btn-add" id="addBtn">추가</button>
     </div>
 
     <div class="status-bar" id="statusBar"></div>
@@ -243,7 +243,7 @@
     </div>
 
     <hr class="divider" id="divider" style="display:none">
-    <button class="btn-clear" id="clearBtn" style="display:none" onclick="clearChecked()">완료된 항목 삭제</button>
+    <button class="btn-clear" id="clearBtn" style="display:none">완료된 항목 삭제</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -427,6 +427,8 @@
       }
     }
 
+    document.getElementById('addBtn').addEventListener('click', addItem);
+    document.getElementById('clearBtn').addEventListener('click', clearChecked);
     document.getElementById('itemInput').addEventListener('keydown', e => {
       if (e.key === 'Enter') addItem();
     });
